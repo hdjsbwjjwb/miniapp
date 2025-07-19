@@ -15,6 +15,18 @@
   <style>
     #map { height: 100vh; margin: 0; }
     html, body { margin: 0; padding: 0; }
+    .numbered-icon {
+      background-color: #0078FF;
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      font-size: 14px;
+      font-weight: bold;
+      line-height: 30px;
+      width: 30px;
+      height: 30px;
+      border: 2px solid white;
+    }
   </style>
 </head>
 <body>
@@ -41,16 +53,20 @@
       'Южный мол — самая западная точка России'
     ];
 
-    // Добавляем маркеры с popups
+    // Добавляем маркеры с номерами и popups
     waypoints.forEach((wp, i) => {
-      L.marker(wp).addTo(map).bindPopup(names[i]);
+      const icon = L.divIcon({
+        className: 'numbered-icon',
+        html: (i + 1).toString()
+      });
+      L.marker(wp, { icon }).addTo(map).bindPopup(names[i]);
     });
 
     // Строим маршрут
     L.Routing.control({
       waypoints: waypoints,
       routeWhileDragging: false,
-      createMarker: () => null // чтобы не дублировать маркеры
+      createMarker: () => null // убираем маркеры от Routing Machine
     }).addTo(map);
   </script>
 </body>
