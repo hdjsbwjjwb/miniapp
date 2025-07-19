@@ -153,7 +153,7 @@
     }).addTo(map);
 
     let userMarker;
-    map.locate({ watch: true, setView: true });
+    map.locate({ watch: true, setView: false });
     map.on('locationfound', function(e) {
       const bikeIcon = L.icon({
         iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448319.png',
