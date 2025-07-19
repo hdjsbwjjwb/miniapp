@@ -25,10 +25,10 @@
     .leaflet-routing-container {
       display: none !important;
     }
-.leaflet-control-attribution a[href*="leaflet"]::before {
-  content: none !important;
-  background-image: none !important;
-}
+    .leaflet-control-attribution a[href*="leaflet"]::before {
+      content: none !important;
+      background-image: none !important;
+    }
   </style>
 </head>
 <body>
@@ -38,30 +38,29 @@
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 
   <script>
-		const map = L.map('map', { attributionControl: false }).setView([54.633204, 19.886628], 14);
-
+    const map = L.map('map', { attributionControl: false }).setView([54.633204, 19.886628], 14);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     const allPoints = [
-      [54.635013, 19.883429], // 0 Музей "Старый Люнет"
-      [54.637620, 19.878199], // 1 Форт Западный
-      [54.646222, 19.866056], // 2 Южный мол
-      [54.625471, 19.882037], // 3 Ангары "Нойтиф"
-      [54.612842, 19.878770], // 4 Взлётная полоса
-      [54.605065, 19.855597], // 5 Промежуточная точка
-      [54.612064, 19.860766], // 6 Ржавый город
-      [54.622897, 19.871746], // 7 Дорога сквозь дюны
-      [54.630612, 19.876617], // 8 Промежуточная (по дороге)
-      [54.633204, 19.886628]  // 9 Наш велопрокат
+      [54.635013, 19.883429],
+      [54.637620, 19.878199],
+      [54.646222, 19.866056],
+      [54.625471, 19.882037],
+      [54.612842, 19.878770],
+      [54.605065, 19.855597],
+      [54.612064, 19.860766],
+      [54.622897, 19.871746],
+      [54.630612, 19.876617],
+      [54.633204, 19.886628]
     ];
 
     const names = [
       'Музей "Старый Люнет"',
       'Форт Западный',
-      'Южный мол — самая западная точка России',
+      'Южный мол',
       'Ангары "Нойтиф"',
       'Взлётная полоса',
       'Ржавый город',
@@ -69,21 +68,50 @@
       'Наш велопрокат'
     ];
 
-    const markerIndices = [0, 1, 2, 3, 4, 6, 7, 9]; // исключаем индекс 5 и 8 (промежуточные), и точку 8 (удалена)
+    const descriptions = [
+      'Атмосферный музей на Балтийской косе, созданный в бывшем фортификационном укреплении 19 века — люнете № 3, который был частью обороны крепости Пиллау. Здесь собраны подлинные артефакты от времён Пруссии до Второй мировой: оружие, документы, редкие карты, шифровальная машина «Энигма». Есть мини-кинозал и авторские экскурсии. ',
+      'Описание точки 2',
+      'Описание точки 3',
+      'Описание точки 4',
+      'Описание точки 5',
+      'Описание точки 6',
+      'Описание точки 7',
+      'Описание точки 8'
+    ];
 
-    let label = 1;
-    markerIndices.forEach(i => {
+    const audioUrls = [
+      'audio/point0.m4a',
+      'audio/point1.m4a',
+      'audio/point2.m4a',
+      'audio/point3.m4a',
+      'audio/point4.m4a',
+      'audio/point5.m4a',
+      'audio/point6.m4a',
+      'audio/point7.m4a'
+    ];
+
+    const markerIndices = [0, 1, 2, 3, 4, 6, 7, 9];
+
+    markerIndices.forEach((i, idx) => {
       const icon = L.divIcon({
         className: 'numbered-icon',
-        html: label.toString(),
+        html: (idx + 1).toString(),
         iconSize: [40, 40],
         iconAnchor: [20, 20]
       });
-      L.marker(allPoints[i], { icon }).addTo(map).bindPopup(names[label - 1]);
-      label++;
+
+      const popupContent = `
+        <strong>${names[idx]}</strong><br>
+        <p>${descriptions[idx]}</p>
+        <audio controls>
+          <source src="${audioUrls[idx]}" type="audio/mpeg">
+          Ваш браузер не поддерживает аудио.
+        </audio>
+      `;
+
+      L.marker(allPoints[i], { icon }).addTo(map).bindPopup(popupContent);
     });
 
-    // Роутинг до Взлётной полосы
     const routingPoints1 = [0, 1, 2, 3, 4].map(i => L.latLng(allPoints[i]));
     L.Routing.control({
       waypoints: routingPoints1,
@@ -92,14 +120,12 @@
       show: false
     }).addTo(map);
 
-    // Прямая линия от Взлётной полосы до промежуточной
     L.polyline([allPoints[4], allPoints[5]], {
       color: 'blue',
       weight: 4,
       dashArray: '5,5'
     }).addTo(map);
 
-    // Роутинг от промежуточной до Ржавого города
     L.Routing.control({
       waypoints: [L.latLng(allPoints[5]), L.latLng(allPoints[6])],
       routeWhileDragging: false,
@@ -107,7 +133,6 @@
       show: false
     }).addTo(map);
 
-    // Роутинг: Ржавый город → Дорога сквозь дюны → промежуточная → финальная
     L.Routing.control({
       waypoints: [
         L.latLng(allPoints[6]),
@@ -119,25 +144,22 @@
       createMarker: () => null,
       show: false
     }).addTo(map);
-    
-// Отображение локации пользователя без круга и текста
-let userMarker;
 
-map.locate({ watch: true, setView: true  });
+    let userMarker;
+    map.locate({ watch: true, setView: true });
+    map.on('locationfound', function(e) {
+      const bikeIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448319.png',
+        iconSize: [60, 60],
+        iconAnchor: [20, 20]
+      });
 
-map.on('locationfound', function(e) {
-  const bikeIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448319.png',
-    iconSize: [60, 60],
-    iconAnchor: [20, 20]
-  });
-
-  if (!userMarker) {
-    userMarker = L.marker(e.latlng, { icon: bikeIcon }).addTo(map);
-  } else {
-    userMarker.setLatLng(e.latlng);
-  }
-});
+      if (!userMarker) {
+        userMarker = L.marker(e.latlng, { icon: bikeIcon }).addTo(map);
+      } else {
+        userMarker.setLatLng(e.latlng);
+      }
+    });
   </script>
 </body>
 </html>
