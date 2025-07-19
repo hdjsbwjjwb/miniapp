@@ -137,7 +137,8 @@
       waypoints: [L.latLng(allPoints[5]), L.latLng(allPoints[6])],
       routeWhileDragging: false,
       createMarker: () => null,
-      show: false
+      show: false,
+      fitSelectedRoutes: false
     }).addTo(map);
 
     L.Routing.control({
