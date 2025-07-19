@@ -25,6 +25,10 @@
     .leaflet-routing-container {
       display: none !important;
     }
+.leaflet-control-attribution a[href*="leaflet"]::before {
+  content: none !important;
+  background-image: none !important;
+}
   </style>
 </head>
 <body>
@@ -34,7 +38,8 @@
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 
   <script>
-    const map = L.map('map').setView([54.632, 19.876], 14);
+    const map = L.map('map', { attributionControl: false }).setView([54.632, 19.876], 14);
+
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors'
@@ -115,24 +120,23 @@
       show: false
     }).addTo(map);
     
-    // Отображение локации пользователя
-map.locate({ setView: true, maxZoom: 16 });
+// Отображение локации пользователя без круга и текста
+let userMarker;
+
+map.locate({ watch: true, setView: false });
 
 map.on('locationfound', function(e) {
-  const radius = e.accuracy / 2;
+  const bikeIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/128/706/706201.png',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
 
-  L.marker(e.latlng).addTo(map)
-    .bindPopup("Вы здесь").openPopup();
-
-  L.circle(e.latlng, radius, {
-    color: 'blue',
-    fillColor: '#blue',
-    fillOpacity: 0.2
-  }).addTo(map);
-});
-
-map.on('locationerror', function(e) {
-  alert("Не удалось определить ваше местоположение.");
+  if (!userMarker) {
+    userMarker = L.marker(e.latlng, { icon: bikeIcon }).addTo(map);
+  } else {
+    userMarker.setLatLng(e.latlng);
+  }
 });
   </script>
 </body>
