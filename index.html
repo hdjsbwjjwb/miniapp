@@ -7,11 +7,10 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-    integrity="sha256-sA+gldI2O1b32uME3jJD9nU9u4Gc4tUD+zYZfP5Z4wE="
-    crossorigin=""
   />
   <style>
-    #map { height: 100vh; }
+    #map { height: 100vh; margin: 0; }
+    html, body { margin: 0; padding: 0; }
   </style>
 </head>
 <body>
@@ -19,8 +18,6 @@
 
   <script
     src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
-    integrity="sha256-o9N1j/rRz3qFZoqyKw9hCRtM0BfK6zrHNDz3v+eYjc8="
-    crossorigin=""
   ></script>
   <script>
     const map = L.map('map').setView([54.637, 19.878], 14);
