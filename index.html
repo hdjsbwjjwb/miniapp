@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Велокарта</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    integrity="sha256-sA+gldI2O1b32uME3jJD9nU9u4Gc4tUD+zYZfP5Z4wE="
+    crossorigin=""
+  />
+  <style>
+    #map { height: 100vh; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+    integrity="sha256-o9N1j/rRz3qFZoqyKw9hCRtM0BfK6zrHNDz3v+eYjc8="
+    crossorigin=""
+  ></script>
+  <script>
+    const map = L.map('map').setView([54.637, 19.878], 14);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const points = [
+      {
+        coords: [54.635013, 19.883429],
+        name: 'Музей "Старый Люнет"',
+      },
+      {
+        coords: [54.637620, 19.878199],
+        name: 'Форт Западный',
+      },
+      {
+        coords: [54.646222, 19.866056],
+        name: 'Южный мол — самая западная точка России',
+      },
+    ];
+
+    const latlngs = [];
+
+    points.forEach(point => {
+      L.marker(point.coords).addTo(map).bindPopup(point.name);
+      latlngs.push(point.coords);
+    });
+
+    L.polyline(latlngs, {color: 'blue'}).addTo(map);
+  </script>
+</body>
+</html>
