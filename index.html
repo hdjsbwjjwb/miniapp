@@ -16,16 +16,17 @@
     #map { height: 100vh; margin: 0; }
     html, body { margin: 0; padding: 0; }
     .numbered-icon {
-      background-color: #0078FF;
-      color: white;
+      background-color: #FFD700;
+      color: black;
       border-radius: 50%;
       text-align: center;
-      font-size: 14px;
+      font-size: 18px;
       font-weight: bold;
-      line-height: 30px;
-      width: 30px;
-      height: 30px;
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
       border: 2px solid white;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
   </style>
 </head>
@@ -42,9 +43,9 @@
     }).addTo(map);
 
     const waypoints = [
-      L.latLng(54.635013, 19.883429), // Музей "Старый Люнет"
-      L.latLng(54.637620, 19.878199), // Форт Западный
-      L.latLng(54.646222, 19.866056)  // Южный мол
+      L.latLng(54.635013, 19.883429),
+      L.latLng(54.637620, 19.878199),
+      L.latLng(54.646222, 19.866056)
     ];
 
     const names = [
@@ -53,20 +54,20 @@
       'Южный мол — самая западная точка России'
     ];
 
-    // Добавляем маркеры с номерами и popups
     waypoints.forEach((wp, i) => {
       const icon = L.divIcon({
         className: 'numbered-icon',
-        html: (i + 1).toString()
+        html: (i + 1).toString(),
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
       });
       L.marker(wp, { icon }).addTo(map).bindPopup(names[i]);
     });
 
-    // Строим маршрут
     L.Routing.control({
       waypoints: waypoints,
       routeWhileDragging: false,
-      createMarker: () => null // убираем маркеры от Routing Machine
+      createMarker: () => null
     }).addTo(map);
   </script>
 </body>
