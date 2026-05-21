@@ -1,733 +1,468 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Велокарта Балтийской косы</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>КосаВело — Велокарта Балтийской косы</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=Fira+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Inter', -apple-system, sans-serif;
-      overflow: hidden;
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #21262d;
+      --accent: #39d353;
+      --accent2: #f0a500;
+      --text: #e6edf3;
+      --muted: #8b949e;
     }
 
-    #map {
-      height: 100vh;
-      width: 100%;
-      touch-action: none;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Fira Sans', sans-serif; overflow: hidden; }
 
-    /* ===== Header ===== */
-    .map-header {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      padding: 12px 28px;
-      border-radius: 18px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
-      text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.5);
+    #map { width: 100%; height: 100vh; }
+
+    /* ── HEADER ── */
+    #header {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: linear-gradient(180deg, rgba(13,17,23,0.97) 0%, rgba(13,17,23,0) 100%);
       pointer-events: none;
     }
-
-    .map-header h1 {
-      font-family: 'Raleway', sans-serif;
-      font-size: 20px;
-      font-weight: 800;
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: 0.5px;
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--accent); display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(57,211,83,0.4);
     }
+    .brand-name { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+    .brand-sub { font-size: 0.72rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 1px; }
 
-    .map-header .subtitle {
-      font-size: 11px;
-      color: #666;
-      margin-top: 2px;
-      font-weight: 500;
+    /* ── STATS ── */
+    #stats {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; display: flex; gap: 1px;
+      background: var(--border); border-radius: 14px; overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
     }
-
-    .map-header .subtitle span {
-      display: inline-block;
-      background: linear-gradient(135deg, #f7971e, #ffd200);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      font-weight: 700;
+    .stat {
+      padding: 12px 24px;
+      background: rgba(22,27,34,0.95); backdrop-filter: blur(8px);
+      text-align: center;
     }
+    .stat-val { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
 
-    /* ===== Numbered Markers ===== */
-    .numbered-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(145deg, #ffd700, #f5a623);
-      color: #1a1a2e;
-      border-radius: 50%;
-      font-size: 14px;
-      font-weight: 800;
-      font-family: 'Raleway', sans-serif;
-      width: 36px;
-      height: 36px;
-      border: 3px solid #fff;
-      box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2),
-                  0 0 0 0 rgba(255, 215, 0, 0.3);
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      animation: marker-pulse 2.5s ease-in-out infinite;
+    /* ── SIDEBAR ── */
+    #sidebar {
+      position: absolute; top: 50%; right: 20px; transform: translateY(-50%);
+      z-index: 1000; width: 290px;
+      background: rgba(22,27,34,0.92); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: 16px;
+      overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      max-height: calc(100vh - 120px); display: flex; flex-direction: column;
     }
-
-    @keyframes marker-pulse {
-      0%, 100% { box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2), 0 0 0 0 rgba(255, 215, 0, 0.3); }
-      50% { box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2), 0 0 0 8px rgba(255, 215, 0, 0); }
+    .sidebar-title {
+      padding: 14px 18px 12px;
+      font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+      border-bottom: 1px solid var(--border); flex-shrink: 0;
     }
-
-    .numbered-icon:hover {
-      transform: scale(1.2);
-      box-shadow: 0 6px 24px rgba(245, 166, 35, 0.6), 0 2px 8px rgba(0,0,0,0.25);
-      animation: none;
+    .points-list { overflow-y: auto; flex: 1; }
+    .points-list::-webkit-scrollbar { width: 3px; }
+    .points-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .point-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 18px; cursor: pointer;
+      border-bottom: 1px solid var(--border); transition: background 0.15s;
     }
+    .point-item:last-child { border-bottom: none; }
+    .point-item:hover { background: rgba(57,211,83,0.07); }
+    .point-num {
+      width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent); color: #0d1117;
+      font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .point-num.rental { background: var(--accent2); }
+    .point-info { flex: 1; min-width: 0; }
+    .point-name { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+    .point-type { font-size: 0.7rem; color: var(--muted); margin-top: 1px; }
 
-    /* ===== Compact Popup ===== */
-    .leaflet-popup { margin-bottom: 16px; }
+    /* ── LOCATE BTN ── */
+    #locateBtn {
+      position: absolute; bottom: 90px; left: 20px; z-index: 1000;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(22,27,34,0.92); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(8px); transition: all 0.2s;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+    #locateBtn svg { width: 18px; height: 18px; }
+    #locateBtn:hover { border-color: var(--accent); color: var(--accent); }
+    #locateBtn.active { background: var(--accent); color: #0d1117; border-color: var(--accent); }
 
+    /* ── POPUP ── */
     .leaflet-popup-content-wrapper {
+      background: rgba(22,27,34,0.97) !important;
+      border: 1px solid var(--border) !important;
       border-radius: 14px !important;
       padding: 0 !important;
-      overflow: hidden;
-      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16) !important;
-      background: transparent !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important;
+      backdrop-filter: blur(12px);
+      color: var(--text) !important;
+      font-family: 'Fira Sans', sans-serif !important;
     }
-
-    .leaflet-popup-content {
-      margin: 0 !important;
-      padding: 0 !important;
-      font-family: 'Inter', -apple-system, sans-serif;
-      line-height: 1.5;
-    }
-
-    .leaflet-popup-tip {
-      box-shadow: none !important;
-      background: #fff !important;
-    }
-
-    .popup-card {
-      width: 280px;
-      background: #fff;
-      overflow: hidden;
-    }
-
-    /* ===== Popup Image ===== */
-    .popup-card .popup-image {
-      width: 100%;
-      height: 130px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .popup-card .popup-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .popup-card .popup-image .image-badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 16px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    .popup-card .popup-image .image-overlay {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 30%;
-      background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
-      pointer-events: none;
-    }
-
-    /* ===== Popup Header ===== */
-    .popup-card .popup-header {
-      background: linear-gradient(145deg, #ffd700, #f5a623);
-      padding: 10px 16px;
-      position: relative;
-    }
-
-    .popup-card .popup-header .popup-title {
-      font-family: 'Raleway', sans-serif;
-      font-size: 15px;
-      font-weight: 800;
-      color: #1a1a2e;
-      line-height: 1.3;
-      padding-right: 30px;
-    }
-
-    /* ===== Popup Body with Scroll ===== */
-    .popup-card .popup-body {
-      padding: 12px 16px 14px;
-    }
-
-    .popup-card .popup-body .description-scroll {
-      max-height: 120px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .popup-card .popup-body .description-scroll p {
-      font-size: 12px;
-      color: #444;
-      line-height: 1.6;
-    }
-
-    .popup-card .popup-body .description-scroll::-webkit-scrollbar {
-      width: 4px;
-    }
-    .popup-card .popup-body .description-scroll::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    .popup-card .popup-body .description-scroll::-webkit-scrollbar-thumb {
-      background: rgba(0,0,0,0.12);
-      border-radius: 4px;
-    }
-
-    /* ===== Leaflet Controls ===== */
-    .leaflet-control-zoom {
-      border: none !important;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.12) !important;
-      border-radius: 10px !important;
-      overflow: hidden;
-    }
-
-    .leaflet-control-zoom a {
-      width: 36px !important;
-      height: 36px !important;
-      line-height: 36px !important;
-      font-size: 16px !important;
-      color: #1a1a2e !important;
-      background: rgba(255, 255, 255, 0.95) !important;
-      border: none !important;
-      transition: all 0.2s ease;
-    }
-
-    .leaflet-control-zoom a:hover {
-      background: linear-gradient(145deg, #ffd700, #f5a623) !important;
-      color: #1a1a2e !important;
-    }
-
-    .leaflet-control-zoom a:first-child { border-bottom: 1px solid #eee !important; }
-
-    .leaflet-overlay-pane {
-      will-change: transform;
-    }
-
-    .leaflet-routing-container { display: none !important; }
-
-    /* ===== Geolocation Button ===== */
-    .locate-btn {
-      position: absolute;
-      bottom: 100px;
-      right: 16px;
-      z-index: 1000;
-      width: 40px;
-      height: 40px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: none;
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s ease;
-      color: #1a1a2e;
-    }
-
-    .locate-btn:hover {
-      background: linear-gradient(145deg, #ffd700, #f5a623);
-      box-shadow: 0 4px 16px rgba(245, 166, 35, 0.4);
-      transform: scale(1.05);
-    }
-
-    .locate-btn svg { width: 20px; height: 20px; }
-
-    .locate-btn.active {
-      background: linear-gradient(145deg, #ffd700, #f5a623);
-      color: #1a1a2e;
-    }
-
-    /* ===== User Location ===== */
-    .user-location-marker {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .user-location-marker .pulse {
-      width: 20px;
-      height: 20px;
-      background: linear-gradient(135deg, #4facfe, #00f2fe);
-      border: 3px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.5);
-      animation: user-pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes user-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.5); }
-      50% { box-shadow: 0 0 0 12px rgba(79, 172, 254, 0); }
-    }
-
-    /* ===== Compass Control ===== */
-    .compass-control {
-      position: absolute;
-      bottom: 36px;
-      right: 16px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .compass-ring {
-      width: 48px;
-      height: 48px;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 50%;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      transition: all 0.2s ease;
-    }
-
-    .compass-ring:hover {
-      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
-    }
-
-    .compass-arrow {
-      width: 0;
-      height: 0;
-      border-left: 8px solid transparent;
-      border-right: 8px solid transparent;
-      border-bottom: 18px solid #e74c3c;
-      transition: transform 0.25s ease-out;
-      position: absolute;
-      top: 8px;
-    }
-
-    .compass-arrow-n {
-      position: absolute;
-      bottom: 7px;
-      font-size: 9px;
-      font-weight: 800;
-      color: #333;
-      font-family: 'Raleway', sans-serif;
-      letter-spacing: 0;
-      user-select: none;
-    }
-
-    .compass-angle {
-      position: absolute;
-      font-size: 9px;
-      font-weight: 700;
-      color: #888;
-      font-family: 'Inter', sans-serif;
-      user-select: none;
-    }
-
-    .compass-reset {
-      width: 28px;
-      height: 28px;
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: none;
-      border-radius: 50%;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      transition: all 0.2s ease;
-      color: #666;
-    }
-
-    .compass-reset:hover {
-      background: linear-gradient(145deg, #ffd700, #f5a623);
-      color: #1a1a2e;
-      box-shadow: 0 3px 12px rgba(245, 166, 35, 0.4);
-      transform: scale(1.1);
-    }
-
-    /* ===== Rotate Hint ===== */
-    .rotate-hint {
-      position: absolute;
-      bottom: 100px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-      background: rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      color: #fff;
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-family: 'Inter', sans-serif;
-      font-size: 13px;
-      font-weight: 500;
-      opacity: 1;
-      transition: opacity 0.6s ease;
-      pointer-events: none;
-      white-space: nowrap;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-    }
-
-    .rotate-hint.hidden {
-      opacity: 0;
-    }
-
-    /* ===== Attribution ===== */
-    .leaflet-control-attribution {
-      background: rgba(255, 255, 255, 0.85) !important;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border-radius: 8px 0 0 0 !important;
-      padding: 3px 8px !important;
-      font-size: 10px !important;
-    }
-
-    .leaflet-control-attribution a { color: #555 !important; }
-
-    /* ===== Close Button ===== */
+    .leaflet-popup-content { margin: 0 !important; width: auto !important; }
+    .leaflet-popup-tip-container { display: none !important; }
     .leaflet-popup-close-button {
-      font-size: 16px !important;
-      top: 4px !important;
-      right: 6px !important;
-      color: rgba(255, 255, 255, 0.8) !important;
-      opacity: 1 !important;
-      width: 24px !important;
-      height: 24px !important;
-      line-height: 24px !important;
-      border-radius: 50% !important;
-      background: rgba(0, 0, 0, 0.2) !important;
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      transition: all 0.2s ease;
-      z-index: 10;
+      color: var(--muted) !important; font-size: 20px !important;
+      right: 10px !important; top: 8px !important; z-index: 10;
+    }
+    .popup-card { width: 280px; }
+    .popup-image { position: relative; height: 140px; overflow: hidden; border-radius: 14px 14px 0 0; }
+    .popup-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .popup-image .image-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(13,17,23,0.85) 100%);
+    }
+    .popup-image .image-badge {
+      position: absolute; bottom: 10px; left: 12px;
+      background: var(--accent2); color: #0d1117;
+      font-family: 'Syne', sans-serif; font-size: 0.68rem; font-weight: 800;
+      padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .popup-header { padding: 12px 14px 6px; }
+    .popup-title { font-family: 'Syne', sans-serif; font-size: 0.92rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .popup-body { padding: 0 14px 14px; }
+    .description-scroll { max-height: 110px; overflow-y: auto; }
+    .description-scroll::-webkit-scrollbar { width: 3px; }
+    .description-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    .description-scroll p { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+
+    /* ── NUMBERED MARKERS ── */
+    .numbered-icon {
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(145deg, #39d353, #27ae47);
+      color: #0d1117; border-radius: 50%;
+      font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800;
+      border: 2.5px solid #0d1117;
+      box-shadow: 0 0 0 2px #39d353, 0 3px 10px rgba(0,0,0,0.5);
+    }
+    .numbered-icon.rental-marker {
+      background: linear-gradient(145deg, #f0a500, #e09000) !important;
+      box-shadow: 0 0 0 2px #f0a500, 0 3px 10px rgba(0,0,0,0.5) !important;
     }
 
-    .leaflet-popup-close-button:hover {
-      background: rgba(0, 0, 0, 0.5) !important;
-      color: #fff !important;
+    /* ── POI MARKERS (?) ── */
+    .poi-icon {
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(145deg, #a78bfa, #7c3aed);
+      color: #fff; border-radius: 50%;
+      font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
+      border: 2.5px solid #0d1117;
+      box-shadow: 0 0 0 2px #7c3aed, 0 3px 10px rgba(0,0,0,0.5);
     }
 
-    /* ===== Global Scrollbar ===== */
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+    /* ── USER LOCATION ── */
+    .user-location-marker { position: relative; }
+    .pulse {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #4a9eff; border: 3px solid #fff;
+      box-shadow: 0 0 0 4px rgba(74,158,255,0.3);
+    }
 
-    /* ===== Responsive ===== */
+    /* ── LEAFLET OVERRIDES ── */
+    .leaflet-routing-container { display: none !important; }
+    .leaflet-control-zoom { border: 1px solid var(--border) !important; border-radius: 10px !important; overflow: hidden; }
+    .leaflet-control-zoom a {
+      background: rgba(22,27,34,0.92) !important; backdrop-filter: blur(8px);
+      color: var(--muted) !important; border-bottom: 1px solid var(--border) !important;
+      font-size: 16px !important; line-height: 28px !important;
+    }
+    .leaflet-control-zoom a:hover { background: rgba(57,211,83,0.15) !important; color: var(--accent) !important; }
+    .leaflet-control-attribution { background: rgba(13,17,23,0.7) !important; color: var(--muted) !important; font-size: 9px !important; }
+    .leaflet-control-attribution a { color: var(--muted) !important; }
+
     @media (max-width: 600px) {
-      .map-header {
-        top: 10px;
-        padding: 8px 18px;
-        width: calc(100% - 20px);
-      }
-      .map-header h1 { font-size: 16px; }
-      .popup-card { width: 250px; }
-      .popup-card .popup-image { height: 110px; }
-      .popup-card .popup-body .description-scroll { max-height: 100px; }
-      .rotate-hint {
-        bottom: 120px;
-        font-size: 11px;
-        padding: 8px 14px;
-      }
-      .compass-ring { width: 40px; height: 40px; }
-      .compass-arrow { border-bottom-width: 14px; border-left-width: 6px; border-right-width: 6px; top: 7px; }
-      .compass-reset { width: 24px; height: 24px; font-size: 11px; }
+      #sidebar { display: none; }
+      .stat { padding: 10px 14px; }
+      .stat-val { font-size: 0.9rem; }
     }
   </style>
 </head>
 <body>
-  <div class="map-header">
-    <h1>🚲 Веломаршрут Балтийской косы</h1>
-    <div class="subtitle"><span>8</span> достопримечательностей · <span>15</span> км</div>
-  </div>
 
-  <button class="locate-btn" id="locateBtn" title="Моё местоположение">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="4"/>
-      <path d="M12 2v4"/>
-      <path d="M12 18v4"/>
-      <path d="M2 12h4"/>
-      <path d="M18 12h4"/>
-    </svg>
-  </button>
-
-  <div id="map"></div>
-
-  <!-- Rotate hint toast -->
-  <div class="rotate-hint" id="rotateHint">🔄 Поверните карту двумя пальцами</div>
-
-  <!-- Compass control -->
-  <div class="compass-control" id="compassControl">
-    <div class="compass-ring" id="compassRing" title="Поворот карты">
-      <div class="compass-arrow" id="compassArrow"></div>
-      <span class="compass-arrow-n">N</span>
+<div id="header">
+  <div class="brand">
+    <div class="brand-icon">🚴</div>
+    <div>
+      <div class="brand-name">КосаВело</div>
+      <div class="brand-sub">Балтийская коса · Прокат</div>
     </div>
-    <button class="compass-reset" id="compassReset" title="Сбросить поворот">⟲</button>
   </div>
+</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
-  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
+<div id="map"></div>
 
-  <script>
-    const map = L.map('map', {
-      attributionControl: true,
-      zoomControl: false,
-      rotate: true,
-      touchRotate: true
-    }).setView([54.633204, 19.886628], 14);
+<div id="sidebar">
+  <div class="sidebar-title">Точки маршрута</div>
+  <div class="points-list" id="pointsList"></div>
+</div>
 
-    L.control.zoom({ position: 'topright' }).addTo(map);
+<div id="stats">
+  <div class="stat"><div class="stat-val">15 км</div><div class="stat-label">Маршрут</div></div>
+  <div class="stat"><div class="stat-val">8</div><div class="stat-label">Точек</div></div>
+  <div class="stat"><div class="stat-val">~2 ч</div><div class="stat-label">Время</div></div>
+  <div class="stat"><div class="stat-val">↑ 12 м</div><div class="stat-label">Перепад</div></div>
+</div>
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> · Велокарта Балтийской косы'
-    }).addTo(map);
+<button id="locateBtn" title="Моё местоположение">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v4"/><path d="M12 18v4"/>
+    <path d="M2 12h4"/><path d="M18 12h4"/>
+  </svg>
+</button>
 
-    // ===== Map Rotation (leaflet-rotate) =====
-    const compassArrow = document.getElementById('compassArrow');
-    const compassRing = document.getElementById('compassRing');
-    const compassReset = document.getElementById('compassReset');
-    const rotateHint = document.getElementById('rotateHint');
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+<script>
+  const map = L.map('map', {
+    zoomControl: false
+  }).setView([54.625, 19.875], 13);
 
-    // Update compass and sync overlay pane on rotation
-    map.on('rotate', function() {
-      const bearing = map.getBearing() || 0;
-      compassArrow.style.transform = 'rotate(' + (-bearing) + 'deg)';
-      compassRing.title = Math.round(bearing) + '° поворот';
-      // Sync overlay pane — keep Leaflet's translate3d, add rotation
-      const overlay = map.getPane('overlayPane');
-      if (overlay) {
-        const cur = overlay.style.transform || '';
-        const withoutRotate = cur.replace(/ rotate\([^)]*\)/g, '');
-        const next = withoutRotate + ' rotate(' + bearing + 'deg)';
-        if (next !== cur) {
-          overlay.style.transform = next;
-        }
-      }
+  L.control.zoom({ position: 'topleft' }).addTo(map);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> · КосаВело'
+  }).addTo(map);
+
+  // ===== Данные =====
+  const allPoints = [
+    [54.635013, 19.883429],
+    [54.637620, 19.878199],
+    [54.646222, 19.866056],
+    [54.625471, 19.882037],
+    [54.612842, 19.878770],
+    [54.605065, 19.855597],
+    [54.614433, 19.864172], // 10 — промежуточная
+    [54.612064, 19.860766],
+    [54.622897, 19.871746],
+    [54.630612, 19.876617],
+    [54.633204, 19.886628]
+  ];
+
+  const names = [
+    'Музей «Старый Люнет»',
+    'Форт Западный',
+    'Южный мол',
+    'Ангары «Нойтиф»',
+    'Взлётная полоса',
+    'Ржавый город',
+    'Дорога сквозь дюны',
+    'Наш велопрокат'
+  ];
+
+  const descriptions = [
+    'Атмосферный музей на Балтийской косе, созданный в бывшем фортификационном укреплении 19 века — люнете № 3, который был частью обороны крепости Пиллау. Здесь собраны подлинные артефакты от времён Пруссии до Второй мировой: оружие, документы, редкие карты, шифровальная машина «Энигма». Есть мини-кинозал и авторские экскурсии.',
+    'Построен в 1869–1871 годах для защиты порта Пиллау от атак с моря. Входил в систему береговых укреплений на Балтийской косе. Оснащён казематами, капонирами и мощными валами, в конце XIX века усилен бетоном — на тот момент это был один из самых современных фортов Восточной Пруссии.',
+    'Исторический волнорез на Балтийской косе, построенный в XVIII–XIX веках для защиты порта Пиллау от морской стихии. Сегодня — это более километра прогулки прямо в море, к зелёному маяку на горизонте.',
+    'Построены в 1930-х как часть немецкой авиабазы Neutief. Использовались Люфтваффе, а после войны — советской морской авиацией. Сохранились массивные бетонные ангары и остатки взлётных полос.',
+    'Построены в 1930-х годах как часть немецкой авиабазы Neutief. Сегодня сохранилась одна полоса — бетон потрескался, местами зарос травой, но до сих пор просматривается старая разметка.',
+    'Арт-пространство на базе заброшенной военной зоны. Ежегодно летом проходит фестиваль Ржавый дракон — костюмированное шоу в стиле постапокалипсиса.',
+    'Песчаные холмы высотой до 40 метров. Уникальный природный ландшафт: редкие растения, миграции птиц, панорамные виды.',
+    'Тут ничего особенного, просто самый лучший велопрокат на Балтийской косе 🚲'
+  ];
+
+  const imageUrls = [
+    'https://picsum.photos/seed/museum/320/200',
+    'https://picsum.photos/seed/fortress/320/200',
+    'https://picsum.photos/seed/pier/320/200',
+    'https://picsum.photos/seed/hangar/320/200',
+    'https://picsum.photos/seed/runway/320/200',
+    'https://picsum.photos/seed/art/320/200',
+    'https://picsum.photos/seed/dunes/320/200',
+    'https://picsum.photos/seed/bikerental/320/200'
+  ];
+
+  // markerIndices: только именованные точки, без промежуточной (индекс 6)
+  const markerIndices = [0, 1, 2, 3, 4, 7, 8, 10];
+  const leafletMarkers = [];
+
+  // ===== Маркеры =====
+  markerIndices.forEach(function(i, idx) {
+    const isRental = idx === 7;
+    const icon = L.divIcon({
+      className: 'numbered-icon' + (isRental ? ' rental-marker' : ''),
+      html: (idx + 1).toString(),
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
 
-    // Reset bearing
-    compassReset.addEventListener('click', function(e) {
-      e.stopPropagation();
-      map.setBearing(0);
-    });
-
-    // Hide hint after 4 seconds
-    setTimeout(function() {
-      rotateHint.classList.add('hidden');
-    }, 4000);
-
-    // ===== Points Data =====
-    const allPoints = [
-      [54.635013, 19.883429],
-      [54.637620, 19.878199],
-      [54.646222, 19.866056],
-      [54.625471, 19.882037],
-      [54.612842, 19.878770],
-      [54.605065, 19.855597],
-      [54.612064, 19.860766],
-      [54.622897, 19.871746],
-      [54.630612, 19.876617],
-      [54.633204, 19.886628]
-    ];
-
-    const names = [
-      'Музей «Старый Люнет»',
-      'Форт Западный',
-      'Южный мол',
-      'Ангары «Нойтиф»',
-      'Взлётная полоса',
-      'Ржавый город',
-      'Дорога сквозь дюны',
-      'Наш велопрокат'
-    ];
-
-    const descriptions = [
-      'Атмосферный музей на Балтийской косе, созданный в бывшем фортификационном укреплении 19 века — люнете № 3, который был частью обороны крепости Пиллау. Здесь собраны подлинные артефакты от времён Пруссии до Второй мировой: оружие, документы, редкие карты, шифровальная машина «Энигма». Есть мини-кинозал и авторские экскурсии.',
-      'Построен в 1869–1871 годах для защиты порта Пиллау от атак с моря. Входил в систему береговых укреплений на Балтийской косе. Оснащён казематами, капонирами и мощными валами, в конце XIX века усилен бетоном — на тот момент это был один из самых современных фортов Восточной Пруссии. Военных действий не вел, после Второй мировой утратил значение. Сегодня форт частично разрушен и огорожен забором — доступ ограничен, но основные постройки хорошо видны снаружи. Редкий пример военной инженерии XIX века на фоне Балтийского моря.',
-      'Исторический волнорез на Балтийской косе, построенный в XVIII–XIX веках для защиты порта Пиллау от морской стихии. Сегодня — это более километра прогулки прямо в море, к зелёному маяку на горизонте. Здесь встречаются история, ветер и тишина. Отличное место для неспешных прогулок, фотосессий и ощущения полной свободы у края земли.',
-      'Построены в 1930-х как часть немецкой авиабазы Neutief. Использовались Люфтваффе, а после войны — советской морской авиацией. Здесь размещались гидросамолёты и истребители: от немецких Heinkel He 59 до советских Бе‑6, Бе‑12 и реактивных МиГ‑15 и МиГ‑17. Сохранились массивные бетонные ангары, старые ворота и остатки взлётных полос. Напротив ангаров — гидрогавань, где происходила посадка и спуск на воду летающих лодок. Бетонированная бухта соединялась с заливом и использовалась до конца 1990‑х. Сегодня здесь швартуются лодки и учебные яхты.',
-      'Построены в 1930-х годах как часть немецкой авиабазы Neutief. Имелись две пересекающиеся бетонные полосы — по данным ряда источников, одна была оснащена системой подогрева и подсветки, хотя это вызывает споры среди исследователей. После войны аэродром использовался советской морской авиацией, вплоть до 1990-х годов. Здесь базировались МиГ-15, МиГ-17, Бе-6, Бе-12. Сегодня сохранилась одна полоса — бетон потрескался, местами зарос травой, но до сих пор просматривается старая разметка. Это редкий пример уцелевшей военной инфраструктуры 20 века. Туристы приходят сюда погулять, поснимать и прочувствовать масштаб места, где когда-то взлетали боевые самолёты. Отличный маршрут для пешей прогулки или велопоездки.',
-      'Арт-пространство на базе заброшенной военной зоны. Здесь зародилась локальная панк-сцена: граффити, скульптуры из металлолома, перформансы. Ежегодно летом проходит фестиваль Ржавый дракон — костюмированное шоу в стиле постапокалипсиса с музыкой, огненным шоу, инсталляциями и атмосферой полной свободы. Уникальное место для любителей альтернативной культуры и ярких фотоснимков.',
-      'Песчаные холмы высотой до 40 метров, сформированные ветром и морем за тысячи лет. Закреплены лесонасаждениями в конце XIX века. Это уникальный природный ландшафт: редкие растения, миграции птиц, панорамные виды. Во время прогулки можно наткнуться на Танцующий лес — участок сосняка с деревьями причудливо изогнутой формы. Отличное место для отдыха, фото и наблюдения за природой.',
-      'Тут ничего особенного, просто самый лучший велопрокат на Балтийской косе 🚲'
-    ];
-
-    const imageUrls = [
-      'https://picsum.photos/seed/museum/320/200',
-      'https://picsum.photos/seed/fortress/320/200',
-      'https://picsum.photos/seed/pier/320/200',
-      'https://picsum.photos/seed/hangar/320/200',
-      'https://picsum.photos/seed/runway/320/200',
-      'https://picsum.photos/seed/art/320/200',
-      'https://picsum.photos/seed/dunes/320/200',
-      'https://picsum.photos/seed/bikerental/320/200'
-    ];
-
-    const markerIndices = [0, 1, 2, 3, 4, 6, 7, 9];
-
-    markerIndices.forEach(function(i, idx) {
-      const icon = L.divIcon({
-        className: 'numbered-icon',
-        html: (idx + 1).toString(),
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      });
-
-      const popupContent = [
-        '<div class="popup-card">',
-          '<div class="popup-image">',
-            '<img src="', imageUrls[idx], '" alt="', names[idx], '" loading="lazy" />',
-            '<span class="image-badge">Точка ', (idx + 1), '</span>',
-            '<div class="image-overlay"></div>',
+    const popupContent = [
+      '<div class="popup-card">',
+        '<div class="popup-image">',
+          '<img src="', imageUrls[idx], '" alt="', names[idx], '" loading="lazy" />',
+          '<span class="image-badge">Точка ', (idx + 1), '</span>',
+          '<div class="image-overlay"></div>',
+        '</div>',
+        '<div class="popup-header">',
+          '<div class="popup-title">', names[idx], '</div>',
+        '</div>',
+        '<div class="popup-body">',
+          '<div class="description-scroll">',
+            '<p>', descriptions[idx], '</p>',
           '</div>',
-          '<div class="popup-header">',
-            '<div class="popup-title">', names[idx], '</div>',
-          '</div>',
-          '<div class="popup-body">',
-            '<div class="description-scroll">',
-              '<p>', descriptions[idx], '</p>',
-            '</div>',
-          '</div>',
-        '</div>'
-      ].join('');
+        '</div>',
+      '</div>'
+    ].join('');
 
-      L.marker(allPoints[i], { icon: icon }).addTo(map).bindPopup(popupContent, {
-        maxWidth: 300,
-        className: 'custom-popup'
-      });
-    });
+    const marker = L.marker(allPoints[i], { icon: icon })
+      .addTo(map)
+      .bindPopup(popupContent, { maxWidth: 300, className: 'custom-popup' });
 
-    // ===== Маршруты =====
-    const routingPoints1 = [0, 1, 2, 3, 4].map(function(i) { return L.latLng(allPoints[i]); });
-    L.Routing.control({
-      waypoints: routingPoints1,
-      routeWhileDragging: false,
-      createMarker: function() { return null; },
-      show: false,
-      lineOptions: {
-        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
-      }
-    }).addTo(map);
+    leafletMarkers.push(marker);
+  });
 
-    L.polyline([allPoints[4], allPoints[5]], {
-      color: '#f5a623',
-      weight: 4,
-      dashArray: '8,6',
-      opacity: 0.7
-    }).addTo(map);
-
-    L.Routing.control({
-      waypoints: [L.latLng(allPoints[5]), L.latLng(allPoints[6])],
-      routeWhileDragging: false,
-      createMarker: function() { return null; },
-      show: false,
-      fitSelectedRoutes: false,
-      lineOptions: {
-        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
-      }
-    }).addTo(map);
-
-    L.Routing.control({
-      waypoints: [
-        L.latLng(allPoints[6]),
-        L.latLng(allPoints[7]),
-        L.latLng(allPoints[8]),
-        L.latLng(allPoints[9])
-      ],
-      routeWhileDragging: false,
-      createMarker: function() { return null; },
-      show: false,
-      lineOptions: {
-        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
-      }
-    }).addTo(map);
-
-    // ===== Геолокация =====
-    let userMarker;
-    let locateActive = false;
-
-    function toggleLocate() {
-      const btn = document.getElementById('locateBtn');
-      if (!locateActive) {
-        map.locate({ watch: true, setView: true, maxZoom: 15 });
-        locateActive = true;
-        btn.classList.add('active');
-      } else {
-        map.stopLocate();
-        locateActive = false;
-        btn.classList.remove('active');
-        if (userMarker) {
-          map.removeLayer(userMarker);
-          userMarker = null;
-        }
-      }
+  // ===== POI — точки интереса (без номера, знак ?) =====
+  const poiPoints = [
+    {
+      coords: [54.600577, 19.843018],
+      name: 'Береговая зенитная батарея «Лемберг»',
+      image: 'https://picsum.photos/seed/lemberg/320/200',
+      desc: 'Мощный немецкий фортификационный комплекс 1943 года постройки. Состояла из четырёх 105-мм зенитных орудий SK C/32, около 25 железобетонных сооружений: орудийные капониры, бункеры для боеприпасов, электростанция, столовая и бункер целеуказания. Взята советскими войсками весной 1945 года в ходе Восточно-Прусской операции. Сегодня основные конструкции хорошо сохранились и доступны для самостоятельного осмотра.'
     }
+  ];
 
-    document.getElementById('locateBtn').addEventListener('click', toggleLocate);
-
-    map.on('locationfound', function(e) {
-      const pulseIcon = L.divIcon({
-        className: 'user-location-marker',
-        html: '<div class="pulse"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-      });
-
-      if (!userMarker) {
-        userMarker = L.marker(e.latlng, { icon: pulseIcon }).addTo(map);
-      } else {
-        userMarker.setLatLng(e.latlng);
-      }
+  poiPoints.forEach(function(poi) {
+    const icon = L.divIcon({
+      className: 'poi-icon',
+      html: '?',
+      iconSize: [34, 34],
+      iconAnchor: [17, 17]
     });
 
-    map.on('locationerror', function() {
-      alert('Не удалось определить ваше местоположение. Разрешите доступ к геолокации в браузере.');
+    const popupContent = [
+      '<div class="popup-card">',
+        '<div class="popup-image">',
+          '<img src="', poi.image, '" alt="', poi.name, '" loading="lazy" />',
+          '<span class="image-badge" style="background:#7c3aed;color:#fff">Точка интереса</span>',
+          '<div class="image-overlay"></div>',
+        '</div>',
+        '<div class="popup-header">',
+          '<div class="popup-title">', poi.name, '</div>',
+        '</div>',
+        '<div class="popup-body">',
+          '<div class="description-scroll">',
+            '<p>', poi.desc, '</p>',
+          '</div>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    L.marker(poi.coords, { icon: icon })
+      .addTo(map)
+      .bindPopup(popupContent, { maxWidth: 300, className: 'custom-popup' });
+  });
+  const routeStyle = [{ color: '#39d353', weight: 4, opacity: 0.85 }];
+
+  // Участок 1: точки 0→1→2→3→4
+  L.Routing.control({
+    waypoints: [0,1,2,3,4].map(function(i){ return L.latLng(allPoints[i]); }),
+    routeWhileDragging: false,
+    createMarker: function(){ return null; },
+    show: false,
+    addWaypoints: false,
+    fitSelectedRoutes: false,
+    lineOptions: { styles: routeStyle, extendToWaypoints: false, missingRouteTolerance: 0 }
+  }).addTo(map);
+
+  // Участок 2: пунктир 4→5 (закрытая зона)
+  L.polyline([allPoints[4], allPoints[5]], {
+    color: '#39d353', weight: 4, dashArray: '8,6', opacity: 0.7
+  }).addTo(map);
+
+  // Участок 3: 5→10→6
+  L.Routing.control({
+    waypoints: [5,10,6].map(function(i){ return L.latLng(allPoints[i]); }),
+    routeWhileDragging: false,
+    createMarker: function(){ return null; },
+    show: false,
+    addWaypoints: false,
+    fitSelectedRoutes: false,
+    lineOptions: { styles: routeStyle, extendToWaypoints: false, missingRouteTolerance: 0 }
+  }).addTo(map);
+
+  // Участок 4: 6(дюны)→7→8→9
+  L.Routing.control({
+    waypoints: [7,8,9,10].map(function(i){ return L.latLng(allPoints[i]); }),
+    routeWhileDragging: false,
+    createMarker: function(){ return null; },
+    show: false,
+    addWaypoints: false,
+    fitSelectedRoutes: false,
+    lineOptions: { styles: routeStyle, extendToWaypoints: false, missingRouteTolerance: 0 }
+  }).addTo(map);
+
+  // ===== Боковая панель =====
+  const list = document.getElementById('pointsList');
+  markerIndices.forEach(function(pointIdx, idx) {
+    const isRental = idx === 7;
+    const item = document.createElement('div');
+    item.className = 'point-item';
+    item.innerHTML =
+      '<div class="point-num' + (isRental ? ' rental' : '') + '">' + (idx + 1) + '</div>' +
+      '<div class="point-info">' +
+        '<div class="point-name">' + names[idx] + '</div>' +
+        '<div class="point-type">' + (isRental ? 'Пункт проката' : 'Достопримечательность') + '</div>' +
+      '</div>';
+    item.addEventListener('click', function() {
+      map.setView(allPoints[pointIdx], 16, { animate: true });
+      setTimeout(function() { leafletMarkers[idx].openPopup(); }, 500);
     });
-  </script>
+    list.appendChild(item);
+  });
+
+  // ===== Геолокация =====
+  let userMarker = null;
+  let locateActive = false;
+
+  document.getElementById('locateBtn').addEventListener('click', function() {
+    const btn = this;
+    if (!locateActive) {
+      locateActive = true;
+      btn.classList.add('active');
+      map.locate({ watch: true, setView: true, maxZoom: 15 });
+    } else {
+      locateActive = false;
+      btn.classList.remove('active');
+      map.stopLocate();
+      if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+    }
+  });
+
+  map.on('locationfound', function(e) {
+    const el = document.createElement('div');
+    el.className = 'user-location-marker';
+    el.innerHTML = '<div class="pulse"></div>';
+    const icon = L.divIcon({ className: '', html: el.outerHTML, iconSize: [16, 16], iconAnchor: [8, 8] });
+    if (!userMarker) {
+      userMarker = L.marker(e.latlng, { icon: icon }).addTo(map);
+    } else {
+      userMarker.setLatLng(e.latlng);
+    }
+  });
+
+  map.on('locationerror', function() {
+    locateActive = false;
+    document.getElementById('locateBtn').classList.remove('active');
+    alert('Не удалось определить местоположение. Разрешите доступ к геолокации.');
+  });
+</script>
 </body>
 </html>
