@@ -21,7 +21,6 @@
       height: 100vh;
       width: 100%;
       touch-action: none;
-      transition: transform 0.15s ease-out;
     }
 
     /* ===== Header ===== */
@@ -508,11 +507,14 @@
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+  <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
 
   <script>
     const map = L.map('map', {
       attributionControl: true,
-      zoomControl: false
+      zoomControl: false,
+      rotate: true,
+      touchRotate: true
     }).setView([54.633204, 19.886628], 14);
 
     L.control.zoom({ position: 'topright' }).addTo(map);
@@ -521,75 +523,23 @@
       attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> · Велокарта Балтийской косы'
     }).addTo(map);
 
-    // ===== Map Rotation =====
-    const mapContainer = document.getElementById('map');
+    // ===== Map Rotation (leaflet-rotate) =====
     const compassArrow = document.getElementById('compassArrow');
     const compassRing = document.getElementById('compassRing');
     const compassReset = document.getElementById('compassReset');
     const rotateHint = document.getElementById('rotateHint');
 
-    let currentRotation = 0;
-    let touchStartAngle = null;
-    let initialRotation = 0;
-
-    function getTouchAngle(touches) {
-      if (touches.length < 2) return null;
-      const t1 = touches[0], t2 = touches[1];
-      return Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
-    }
-
-    function applyRotation(deg, smooth) {
-      currentRotation = ((deg % 360) + 360) % 360;
-      mapContainer.style.transition = smooth ? 'transform 0.15s ease-out' : 'none';
-      mapContainer.style.transform = 'rotate(' + currentRotation + 'deg)';
-      updateCompass();
-    }
-
-    function updateCompass() {
-      // Arrow points red toward actual north (counter-rotation)
-      compassArrow.style.transform = 'rotate(' + (-currentRotation) + 'deg)';
-      compassRing.title = Math.round(currentRotation) + '° поворот';
-    }
-
-    function resetRotation() {
-      mapContainer.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
-      mapContainer.style.transform = 'rotate(0deg)';
-      currentRotation = 0;
-      updateCompass();
-    }
-
-    // Touch rotation — two fingers
-    mapContainer.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 2) {
-        e.preventDefault();
-        touchStartAngle = getTouchAngle(e.touches);
-        initialRotation = currentRotation;
-        mapContainer.style.transition = 'none';
-      }
-    }, { passive: false });
-
-    mapContainer.addEventListener('touchmove', function(e) {
-      if (e.touches.length === 2 && touchStartAngle !== null) {
-        e.preventDefault();
-        let newAngle = getTouchAngle(e.touches);
-        if (newAngle !== null) {
-          let delta = newAngle - touchStartAngle;
-          applyRotation(initialRotation + delta, false);
-        }
-      }
-    }, { passive: false });
-
-    mapContainer.addEventListener('touchend', function(e) {
-      if (e.touches.length < 2) {
-        touchStartAngle = null;
-        mapContainer.style.transition = 'transform 0.15s ease-out';
-      }
+    // Update compass on rotation
+    map.on('rotate', function() {
+      const bearing = map.getBearing() || 0;
+      compassArrow.style.transform = 'rotate(' + (-bearing) + 'deg)';
+      compassRing.title = Math.round(bearing) + '° поворот';
     });
 
-    // Reset button
+    // Reset bearing
     compassReset.addEventListener('click', function(e) {
       e.stopPropagation();
-      resetRotation();
+      map.setBearing(0);
     });
 
     // Hide hint after 4 seconds
