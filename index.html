@@ -240,6 +240,10 @@
 
     .leaflet-control-zoom a:first-child { border-bottom: 1px solid #eee !important; }
 
+    .leaflet-overlay-pane {
+      will-change: transform;
+    }
+
     .leaflet-routing-container { display: none !important; }
 
     /* ===== Geolocation Button ===== */
@@ -529,11 +533,21 @@
     const compassReset = document.getElementById('compassReset');
     const rotateHint = document.getElementById('rotateHint');
 
-    // Update compass on rotation
+    // Update compass and sync overlay pane on rotation
     map.on('rotate', function() {
       const bearing = map.getBearing() || 0;
       compassArrow.style.transform = 'rotate(' + (-bearing) + 'deg)';
       compassRing.title = Math.round(bearing) + '° поворот';
+      // Sync overlay pane — keep Leaflet's translate3d, add rotation
+      const overlay = map.getPane('overlayPane');
+      if (overlay) {
+        const cur = overlay.style.transform || '';
+        const withoutRotate = cur.replace(/ rotate\([^)]*\)/g, '');
+        const next = withoutRotate + ' rotate(' + bearing + 'deg)';
+        if (next !== cur) {
+          overlay.style.transform = next;
+        }
+      }
     });
 
     // Reset bearing
