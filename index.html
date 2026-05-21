@@ -428,22 +428,30 @@
     list.appendChild(item);
   });
 
+
   // ===== Геолокация =====
   let userMarker = null;
   let locateActive = false;
 
+  function startLocate() {
+    const btn = document.getElementById('locateBtn');
+    locateActive = true;
+    btn.classList.add('active');
+    localStorage.setItem('locateActive', 'true');
+    map.locate({ watch: true, setView: true, maxZoom: 15 });
+  }
+
+  function stopLocate() {
+    const btn = document.getElementById('locateBtn');
+    locateActive = false;
+    btn.classList.remove('active');
+    localStorage.setItem('locateActive', 'false');
+    map.stopLocate();
+    if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+  }
+
   document.getElementById('locateBtn').addEventListener('click', function() {
-    const btn = this;
-    if (!locateActive) {
-      locateActive = true;
-      btn.classList.add('active');
-      map.locate({ watch: true, setView: true, maxZoom: 15 });
-    } else {
-      locateActive = false;
-      btn.classList.remove('active');
-      map.stopLocate();
-      if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
-    }
+    if (!locateActive) { startLocate(); } else { stopLocate(); }
   });
 
   map.on('locationfound', function(e) {
@@ -459,10 +467,14 @@
   });
 
   map.on('locationerror', function() {
-    locateActive = false;
-    document.getElementById('locateBtn').classList.remove('active');
+    stopLocate();
     alert('Не удалось определить местоположение. Разрешите доступ к геолокации.');
   });
+
+  // Восстанавливаем состояние после обновления страницы
+  if (localStorage.getItem('locateActive') === 'true') {
+    startLocate();
+  }
 </script>
 </body>
 </html>
