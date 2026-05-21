@@ -1,173 +1,239 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8" />
-  <title>Велокарта</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <title>Велопрокат — Балтийская коса</title>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    #map { height: 100vh; margin: 0; }
-    html, body { margin: 0; padding: 0; }
-    .numbered-icon {
-      background-color: #FFD700;
-      color: black;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #2d6a4f;
+      --green-light: #52b788;
+      --sand: #f4e4c1;
+      --dark: #1a1a2e;
+      --white: #ffffff;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--dark);
+      color: var(--white);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(135deg, var(--green) 0%, #1b4332 100%);
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 3px solid var(--green-light);
+    }
+
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: var(--green-light);
       border-radius: 50%;
-      text-align: center;
-      font-size: 18px;
-      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    header h1 {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--sand);
+      line-height: 1.2;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: var(--green-light);
+      margin-top: 2px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 20px;
+      padding: 14px 32px;
+      background: #111827;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: #a0aec0;
+    }
+
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .legend-line {
+      width: 24px;
+      height: 3px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    #map {
+      width: 100%;
+      height: calc(100vh - 160px);
+      min-height: 400px;
+    }
+
+    .loading {
+      width: 100%;
+      height: calc(100vh - 160px);
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #111827;
+      gap: 16px;
+      color: #a0aec0;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
       width: 40px;
       height: 40px;
-      line-height: 40px;
-      border: 2px solid white;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      border: 3px solid #2d3748;
+      border-top-color: var(--green-light);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
-    .leaflet-routing-container {
-      display: none !important;
-    }
-    .leaflet-control-attribution a[href*="leaflet"]::before {
-      content: none !important;
-      background-image: none !important;
-    }
-    .leaflet-popup-close-button {
-  font-size: 28px !important;
-  top: 6px !important;
-  right: 10px !important;
-  color: #000 !important;
-  opacity: 1 !important;
-}
+
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+<header>
+  <div class="logo">🚴</div>
+  <div>
+    <h1>Велопрокат — Балтийская коса</h1>
+    <p>Маршруты для аренды велосипедов и самокатов</p>
+  </div>
+</header>
 
-  <script>
-    const map = L.map('map', { attributionControl: false }).setView([54.633204, 19.886628], 14);
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-dot" style="background:#52b788"></div>
+    Пункт проката
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:#f6ad55"></div>
+    Точка интереса
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:#52b788"></div>
+    Основной маршрут (~18 км)
+  </div>
+</div>
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <span>Загружаем карту...</span>
+</div>
+<div id="map" style="display:none"></div>
 
-    const allPoints = [
-      [54.635013, 19.883429],
-      [54.637620, 19.878199],
-      [54.646222, 19.866056],
-      [54.625471, 19.882037],
-      [54.612842, 19.878770],
-      [54.605065, 19.855597],
-      [54.612064, 19.860766],
-      [54.622897, 19.871746],
-      [54.630612, 19.876617],
-      [54.633204, 19.886628]
-    ];
+<script src="https://api-maps.yandex.ru/v3/?apikey=e24c73f6-1a72-481f-9e10-6ddff382744e&lang=ru_RU"></script>
+<script>
+  // Маршрут по Балтийской косе (координаты: долгота, широта)
+  const routePoints = [
+    [19.6520, 54.9480], // Пункт проката (старт)
+    [19.6540, 54.9520],
+    [19.6560, 54.9570],
+    [19.6590, 54.9620],
+    [19.6610, 54.9670],
+    [19.6640, 54.9720],
+    [19.6660, 54.9780],
+    [19.6690, 54.9830],
+    [19.6710, 54.9880],
+    [19.6730, 54.9930],
+    [19.6750, 54.9980],
+    [19.6770, 55.0040],
+    [19.6800, 55.0090], // Финальная точка (коса)
+  ];
 
-    const names = [
-      'Музей "Старый Люнет"',
-      'Форт Западный',
-      'Южный мол',
-      'Ангары "Нойтиф"',
-      'Взлётная полоса',
-      'Ржавый город',
-      'Дорога сквозь дюны',
-      'Наш велопрокат'
-    ];
+  const pointsOfInterest = [
+    { coords: [19.6520, 54.9480], name: "🟢 Пункт проката", desc: "Старт маршрута. Аренда велосипедов и самокатов.", color: "#52b788" },
+    { coords: [19.6610, 54.9670], name: "🟡 Смотровая площадка", desc: "Красивый вид на залив.", color: "#f6ad55" },
+    { coords: [19.6710, 54.9880], name: "🟡 Пляж", desc: "Остановка для отдыха.", color: "#f6ad55" },
+    { coords: [19.6800, 55.0090], name: "🟡 Конечная точка", desc: "Конец косы. Разворотная точка маршрута.", color: "#f6ad55" },
+  ];
 
-    const descriptions = [
-      'Атмосферный музей на Балтийской косе, созданный в бывшем фортификационном укреплении 19 века — люнете № 3, который был частью обороны крепости Пиллау. Здесь собраны подлинные артефакты от времён Пруссии до Второй мировой: оружие, документы, редкие карты, шифровальная машина «Энигма». Есть мини-кинозал и авторские экскурсии. ',
-      'Построен в 1869–1871 годах для защиты порта Пиллау от атак с моря. Входил в систему береговых укреплений на Балтийской косе. Оснащён казематами, капонирами и мощными валами, в конце XIX века усилен бетоном — на тот момент это был один из самых современных фортов Восточной Пруссии. Военных действий не вел, после Второй мировой утратил значение. Сегодня форт частично разрушен и огорожен забором — доступ ограничен, но основные постройки хорошо видны снаружи. Редкий пример военной инженерии XIX века на фоне Балтийского моря.',
-      'Исторический волнорез на Балтийской косе, построенный в XVIII–XIX веках для защиты порта Пиллау от морской стихии. Сегодня — это более километра прогулки прямо в море, к зелёному маяку на горизонте. Здесь встречаются история, ветер и тишина. Отличное место для неспешных прогулок, фотосессий и ощущения полной свободы у края земли.',
-      'Построены в 1930-х как часть немецкой авиабазы Neutief. Использовались Люфтваффе, а после войны — советской морской авиацией. Здесь размещались гидросамолёты и истребители: от немецких Heinkel He 59 до советских Бе‑6, Бе‑12 и реактивных МиГ‑15 и МиГ‑17. Сохранились массивные бетонные ангары, старые ворота и остатки взлётных полос. Напротив ангаров — гидрогавань, где происходила посадка и спуск на воду летающих лодок. Бетонированная бухта соединялась с заливом и использовалась до конца 1990‑х. Сегодня здесь швартуются лодки и учебные яхты.',
-      'Построены в 1930-х годах как часть немецкой авиабазы Neutief. Имелись две пересекающиеся бетонные полосы — по данным ряда источников, одна была оснащена системой подогрева и подсветки, хотя это вызывает споры среди исследователей. После войны аэродром использовался советской морской авиацией, вплоть до 1990-х годов. Здесь базировались МиГ-15, МиГ-17, Бе-6, Бе-12. Сегодня сохранилась одна полоса — бетон потрескался, местами зарос травой, но до сих пор просматривается старая разметка. Это редкий пример уцелевшей военной инфраструктуры 20 века. Туристы приходят сюда погулять, поснимать и прочувствовать масштаб места, где когда-то взлетали боевые самолёты. Отличный маршрут для пешей прогулки или велопоездки.',
-      'Арт-пространство на базе заброшенной военной зоны. Здесь зародилась локальная панк-сцена: граффити, скульптуры из металлолома, перформансы. Ежегодно летом проходит фестиваль Ржавый дракон — костюмированное шоу в стиле постапокалипсиса с музыкой, огненным шоу, инсталляциями и атмосферой полной свободы. Уникальное место для любителей альтернативной культуры и ярких фотоснимков.',
-      'Песчаные холмы высотой до 40 метров, сформированные ветром и морем за тысячи лет. Закреплены лесонасаждениями в конце XIX века. Это уникальный природный ландшафт: редкие растения, миграции птиц, панорамные виды. Во время прогулки можно наткнуться на Танцующий лес — участок сосняка с деревьями причудливо изогнутой формы. Отличное место для отдыха, фото и наблюдения за природой.',
-      'Тут ничего особенного, просто самый лучший велопрокат на Балтийской косе'
-    ];
+  ymaps3.ready.then(() => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('map').style.display = 'block';
 
-    const audioUrls = [
-      'audio/point0.m4a',
-      'audio/point1.m4a',
-      'audio/point2.m4a',
-      'audio/point3.m4a',
-      'audio/point4.m4a',
-      'audio/point5.m4a',
-      'audio/point6.m4a',
-      'audio/point7.m4a'
-    ];
+    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer,
+            YMapMarker, YMapFeature } = ymaps3;
 
-    const markerIndices = [0, 1, 2, 3, 4, 6, 7, 9];
-
-    markerIndices.forEach((i, idx) => {
-      const icon = L.divIcon({
-        className: 'numbered-icon',
-        html: (idx + 1).toString(),
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      });
-
-      const popupContent = `
-        <strong>${names[idx]}</strong><br>
-        <p>${descriptions[idx]}</p>
-        <audio controls>
-          <source src="${audioUrls[idx]}" type="audio/mpeg">
-          Ваш браузер не поддерживает аудио.
-        </audio>
-      `;
-
-      L.marker(allPoints[i], { icon }).addTo(map).bindPopup(popupContent);
-    });
-
-    const routingPoints1 = [0, 1, 2, 3, 4].map(i => L.latLng(allPoints[i]));
-    L.Routing.control({
-      waypoints: routingPoints1,
-      routeWhileDragging: false,
-      createMarker: () => null,
-      show: false
-    }).addTo(map);
-
-    L.polyline([allPoints[4], allPoints[5]], {
-      color: 'blue',
-      weight: 4,
-      dashArray: '5,5'
-    }).addTo(map);
-
-    L.Routing.control({
-      waypoints: [L.latLng(allPoints[5]), L.latLng(allPoints[6])],
-      routeWhileDragging: false,
-      createMarker: () => null,
-      show: false,
-      fitSelectedRoutes: false
-    }).addTo(map);
-
-    L.Routing.control({
-      waypoints: [
-        L.latLng(allPoints[6]),
-        L.latLng(allPoints[7]),
-        L.latLng(allPoints[8]),
-        L.latLng(allPoints[9])
-      ],
-      routeWhileDragging: false,
-      createMarker: () => null,
-      show: false
-    }).addTo(map);
-
-    let userMarker;
-    map.locate({ watch: true, setView: false });
-    map.on('locationfound', function(e) {
-      const bikeIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/3448/3448319.png',
-        iconSize: [60, 60],
-        iconAnchor: [20, 20]
-      });
-
-      if (!userMarker) {
-        userMarker = L.marker(e.latlng, { icon: bikeIcon }).addTo(map);
-      } else {
-        userMarker.setLatLng(e.latlng);
+    const map = new YMap(
+      document.getElementById('map'),
+      {
+        location: {
+          center: [19.6660, 54.9780],
+          zoom: 12
+        }
       }
+    );
+
+    map.addChild(new YMapDefaultSchemeLayer());
+    map.addChild(new YMapDefaultFeaturesLayer());
+
+    // Линия маршрута
+    map.addChild(new YMapFeature({
+      geometry: {
+        type: 'LineString',
+        coordinates: routePoints
+      },
+      style: {
+        stroke: [{ color: '#52b788', width: 4 }]
+      }
+    }));
+
+    // Метки
+    pointsOfInterest.forEach(poi => {
+      const el = document.createElement('div');
+      el.style.cssText = `
+        background: ${poi.color};
+        color: #1a1a2e;
+        font-family: Inter, sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 10px;
+        border-radius: 20px;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        cursor: pointer;
+        border: 2px solid white;
+      `;
+      el.textContent = poi.name;
+      el.title = poi.desc;
+
+      map.addChild(new YMapMarker(
+        { coordinates: poi.coords },
+        el
+      ));
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>
