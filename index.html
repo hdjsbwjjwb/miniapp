@@ -1,239 +1,769 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8" />
+  <title>Велокарта Балтийской косы</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Велопрокат — Балтийская коса</title>
-  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --green: #2d6a4f;
-      --green-light: #52b788;
-      --sand: #f4e4c1;
-      --dark: #1a1a2e;
-      --white: #ffffff;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background: var(--dark);
-      color: var(--white);
-      min-height: 100vh;
-    }
-
-    header {
-      background: linear-gradient(135deg, var(--green) 0%, #1b4332 100%);
-      padding: 24px 32px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      border-bottom: 3px solid var(--green-light);
-    }
-
-    .logo {
-      width: 48px;
-      height: 48px;
-      background: var(--green-light);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-    }
-
-    header h1 {
-      font-family: 'Unbounded', sans-serif;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: var(--sand);
-      line-height: 1.2;
-    }
-
-    header p {
-      font-size: 0.85rem;
-      color: var(--green-light);
-      margin-top: 2px;
-    }
-
-    .legend {
-      display: flex;
-      gap: 20px;
-      padding: 14px 32px;
-      background: #111827;
-      flex-wrap: wrap;
-      border-bottom: 1px solid #2d3748;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.82rem;
-      color: #a0aec0;
-    }
-
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .legend-line {
-      width: 24px;
-      height: 3px;
-      border-radius: 2px;
-      flex-shrink: 0;
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow: hidden;
     }
 
     #map {
+      height: 100vh;
       width: 100%;
-      height: calc(100vh - 160px);
-      min-height: 400px;
+      touch-action: none;
+      transition: transform 0.15s ease-out;
     }
 
-    .loading {
+    /* ===== Header ===== */
+    .map-header {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 12px 28px;
+      border-radius: 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      pointer-events: none;
+    }
+
+    .map-header h1 {
+      font-family: 'Raleway', sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.5px;
+    }
+
+    .map-header .subtitle {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .map-header .subtitle span {
+      display: inline-block;
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+
+    /* ===== Numbered Markers ===== */
+    .numbered-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(145deg, #ffd700, #f5a623);
+      color: #1a1a2e;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: 'Raleway', sans-serif;
+      width: 36px;
+      height: 36px;
+      border: 3px solid #fff;
+      box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2),
+                  0 0 0 0 rgba(255, 215, 0, 0.3);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: marker-pulse 2.5s ease-in-out infinite;
+    }
+
+    @keyframes marker-pulse {
+      0%, 100% { box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2), 0 0 0 0 rgba(255, 215, 0, 0.3); }
+      50% { box-shadow: 0 3px 12px rgba(245, 166, 35, 0.45), 0 1px 4px rgba(0,0,0,0.2), 0 0 0 8px rgba(255, 215, 0, 0); }
+    }
+
+    .numbered-icon:hover {
+      transform: scale(1.2);
+      box-shadow: 0 6px 24px rgba(245, 166, 35, 0.6), 0 2px 8px rgba(0,0,0,0.25);
+      animation: none;
+    }
+
+    /* ===== Compact Popup ===== */
+    .leaflet-popup { margin-bottom: 16px; }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 14px !important;
+      padding: 0 !important;
+      overflow: hidden;
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.16) !important;
+      background: transparent !important;
+    }
+
+    .leaflet-popup-content {
+      margin: 0 !important;
+      padding: 0 !important;
+      font-family: 'Inter', -apple-system, sans-serif;
+      line-height: 1.5;
+    }
+
+    .leaflet-popup-tip {
+      box-shadow: none !important;
+      background: #fff !important;
+    }
+
+    .popup-card {
+      width: 280px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    /* ===== Popup Image ===== */
+    .popup-card .popup-image {
       width: 100%;
-      height: calc(100vh - 160px);
-      min-height: 400px;
+      height: 130px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .popup-card .popup-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .popup-card .popup-image .image-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 16px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .popup-card .popup-image .image-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 30%;
+      background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+      pointer-events: none;
+    }
+
+    /* ===== Popup Header ===== */
+    .popup-card .popup-header {
+      background: linear-gradient(145deg, #ffd700, #f5a623);
+      padding: 10px 16px;
+      position: relative;
+    }
+
+    .popup-card .popup-header .popup-title {
+      font-family: 'Raleway', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #1a1a2e;
+      line-height: 1.3;
+      padding-right: 30px;
+    }
+
+    /* ===== Popup Body with Scroll ===== */
+    .popup-card .popup-body {
+      padding: 12px 16px 14px;
+    }
+
+    .popup-card .popup-body .description-scroll {
+      max-height: 120px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .popup-card .popup-body .description-scroll p {
+      font-size: 12px;
+      color: #444;
+      line-height: 1.6;
+    }
+
+    .popup-card .popup-body .description-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .popup-card .popup-body .description-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .popup-card .popup-body .description-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.12);
+      border-radius: 4px;
+    }
+
+    /* ===== Leaflet Controls ===== */
+    .leaflet-control-zoom {
+      border: none !important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12) !important;
+      border-radius: 10px !important;
+      overflow: hidden;
+    }
+
+    .leaflet-control-zoom a {
+      width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
+      font-size: 16px !important;
+      color: #1a1a2e !important;
+      background: rgba(255, 255, 255, 0.95) !important;
+      border: none !important;
+      transition: all 0.2s ease;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: linear-gradient(145deg, #ffd700, #f5a623) !important;
+      color: #1a1a2e !important;
+    }
+
+    .leaflet-control-zoom a:first-child { border-bottom: 1px solid #eee !important; }
+
+    .leaflet-routing-container { display: none !important; }
+
+    /* ===== Geolocation Button ===== */
+    .locate-btn {
+      position: absolute;
+      bottom: 100px;
+      right: 16px;
+      z-index: 1000;
+      width: 40px;
+      height: 40px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      color: #1a1a2e;
+    }
+
+    .locate-btn:hover {
+      background: linear-gradient(145deg, #ffd700, #f5a623);
+      box-shadow: 0 4px 16px rgba(245, 166, 35, 0.4);
+      transform: scale(1.05);
+    }
+
+    .locate-btn svg { width: 20px; height: 20px; }
+
+    .locate-btn.active {
+      background: linear-gradient(145deg, #ffd700, #f5a623);
+      color: #1a1a2e;
+    }
+
+    /* ===== User Location ===== */
+    .user-location-marker {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-location-marker .pulse {
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.5);
+      animation: user-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes user-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(79, 172, 254, 0.5); }
+      50% { box-shadow: 0 0 0 12px rgba(79, 172, 254, 0); }
+    }
+
+    /* ===== Compass Control ===== */
+    .compass-control {
+      position: absolute;
+      bottom: 36px;
+      right: 16px;
+      z-index: 1000;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      background: #111827;
-      gap: 16px;
-      color: #a0aec0;
-      font-size: 0.9rem;
+      gap: 6px;
     }
 
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid #2d3748;
-      border-top-color: var(--green-light);
+    .compass-ring {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: all 0.2s ease;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .compass-ring:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    }
+
+    .compass-arrow {
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-right: 8px solid transparent;
+      border-bottom: 18px solid #e74c3c;
+      transition: transform 0.25s ease-out;
+      position: absolute;
+      top: 8px;
+    }
+
+    .compass-arrow-n {
+      position: absolute;
+      bottom: 7px;
+      font-size: 9px;
+      font-weight: 800;
+      color: #333;
+      font-family: 'Raleway', sans-serif;
+      letter-spacing: 0;
+      user-select: none;
+    }
+
+    .compass-angle {
+      position: absolute;
+      font-size: 9px;
+      font-weight: 700;
+      color: #888;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    .compass-reset {
+      width: 28px;
+      height: 28px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: none;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      color: #666;
+    }
+
+    .compass-reset:hover {
+      background: linear-gradient(145deg, #ffd700, #f5a623);
+      color: #1a1a2e;
+      box-shadow: 0 3px 12px rgba(245, 166, 35, 0.4);
+      transform: scale(1.1);
+    }
+
+    /* ===== Rotate Hint ===== */
+    .rotate-hint {
+      position: absolute;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 1;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    .rotate-hint.hidden {
+      opacity: 0;
+    }
+
+    /* ===== Attribution ===== */
+    .leaflet-control-attribution {
+      background: rgba(255, 255, 255, 0.85) !important;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 8px 0 0 0 !important;
+      padding: 3px 8px !important;
+      font-size: 10px !important;
+    }
+
+    .leaflet-control-attribution a { color: #555 !important; }
+
+    /* ===== Close Button ===== */
+    .leaflet-popup-close-button {
+      font-size: 16px !important;
+      top: 4px !important;
+      right: 6px !important;
+      color: rgba(255, 255, 255, 0.8) !important;
+      opacity: 1 !important;
+      width: 24px !important;
+      height: 24px !important;
+      line-height: 24px !important;
+      border-radius: 50% !important;
+      background: rgba(0, 0, 0, 0.2) !important;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      transition: all 0.2s ease;
+      z-index: 10;
+    }
+
+    .leaflet-popup-close-button:hover {
+      background: rgba(0, 0, 0, 0.5) !important;
+      color: #fff !important;
+    }
+
+    /* ===== Global Scrollbar ===== */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 600px) {
+      .map-header {
+        top: 10px;
+        padding: 8px 18px;
+        width: calc(100% - 20px);
+      }
+      .map-header h1 { font-size: 16px; }
+      .popup-card { width: 250px; }
+      .popup-card .popup-image { height: 110px; }
+      .popup-card .popup-body .description-scroll { max-height: 100px; }
+      .rotate-hint {
+        bottom: 120px;
+        font-size: 11px;
+        padding: 8px 14px;
+      }
+      .compass-ring { width: 40px; height: 40px; }
+      .compass-arrow { border-bottom-width: 14px; border-left-width: 6px; border-right-width: 6px; top: 7px; }
+      .compass-reset { width: 24px; height: 24px; font-size: 11px; }
+    }
   </style>
 </head>
 <body>
-
-<header>
-  <div class="logo">🚴</div>
-  <div>
-    <h1>Велопрокат — Балтийская коса</h1>
-    <p>Маршруты для аренды велосипедов и самокатов</p>
+  <div class="map-header">
+    <h1>🚲 Веломаршрут Балтийской косы</h1>
+    <div class="subtitle"><span>8</span> достопримечательностей · <span>15</span> км</div>
   </div>
-</header>
 
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-dot" style="background:#52b788"></div>
-    Пункт проката
+  <button class="locate-btn" id="locateBtn" title="Моё местоположение">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M12 2v4"/>
+      <path d="M12 18v4"/>
+      <path d="M2 12h4"/>
+      <path d="M18 12h4"/>
+    </svg>
+  </button>
+
+  <div id="map"></div>
+
+  <!-- Rotate hint toast -->
+  <div class="rotate-hint" id="rotateHint">🔄 Поверните карту двумя пальцами</div>
+
+  <!-- Compass control -->
+  <div class="compass-control" id="compassControl">
+    <div class="compass-ring" id="compassRing" title="Поворот карты">
+      <div class="compass-arrow" id="compassArrow"></div>
+      <span class="compass-arrow-n">N</span>
+    </div>
+    <button class="compass-reset" id="compassReset" title="Сбросить поворот">⟲</button>
   </div>
-  <div class="legend-item">
-    <div class="legend-dot" style="background:#f6ad55"></div>
-    Точка интереса
-  </div>
-  <div class="legend-item">
-    <div class="legend-line" style="background:#52b788"></div>
-    Основной маршрут (~18 км)
-  </div>
-</div>
 
-<div class="loading" id="loading">
-  <div class="spinner"></div>
-  <span>Загружаем карту...</span>
-</div>
-<div id="map" style="display:none"></div>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
 
-<script src="https://api-maps.yandex.ru/v3/?apikey=e24c73f6-1a72-481f-9e10-6ddff382744e&lang=ru_RU"></script>
-<script>
-  // Маршрут по Балтийской косе (координаты: долгота, широта)
-  const routePoints = [
-    [19.6520, 54.9480], // Пункт проката (старт)
-    [19.6540, 54.9520],
-    [19.6560, 54.9570],
-    [19.6590, 54.9620],
-    [19.6610, 54.9670],
-    [19.6640, 54.9720],
-    [19.6660, 54.9780],
-    [19.6690, 54.9830],
-    [19.6710, 54.9880],
-    [19.6730, 54.9930],
-    [19.6750, 54.9980],
-    [19.6770, 55.0040],
-    [19.6800, 55.0090], // Финальная точка (коса)
-  ];
+  <script>
+    const map = L.map('map', {
+      attributionControl: true,
+      zoomControl: false
+    }).setView([54.633204, 19.886628], 14);
 
-  const pointsOfInterest = [
-    { coords: [19.6520, 54.9480], name: "🟢 Пункт проката", desc: "Старт маршрута. Аренда велосипедов и самокатов.", color: "#52b788" },
-    { coords: [19.6610, 54.9670], name: "🟡 Смотровая площадка", desc: "Красивый вид на залив.", color: "#f6ad55" },
-    { coords: [19.6710, 54.9880], name: "🟡 Пляж", desc: "Остановка для отдыха.", color: "#f6ad55" },
-    { coords: [19.6800, 55.0090], name: "🟡 Конечная точка", desc: "Конец косы. Разворотная точка маршрута.", color: "#f6ad55" },
-  ];
+    L.control.zoom({ position: 'topright' }).addTo(map);
 
-  ymaps3.ready.then(() => {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('map').style.display = 'block';
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> · Велокарта Балтийской косы'
+    }).addTo(map);
 
-    const { YMap, YMapDefaultSchemeLayer, YMapDefaultFeaturesLayer,
-            YMapMarker, YMapFeature } = ymaps3;
+    // ===== Map Rotation =====
+    const mapContainer = document.getElementById('map');
+    const compassArrow = document.getElementById('compassArrow');
+    const compassRing = document.getElementById('compassRing');
+    const compassReset = document.getElementById('compassReset');
+    const rotateHint = document.getElementById('rotateHint');
 
-    const map = new YMap(
-      document.getElementById('map'),
-      {
-        location: {
-          center: [19.6660, 54.9780],
-          zoom: 12
+    let currentRotation = 0;
+    let touchStartAngle = null;
+    let initialRotation = 0;
+
+    function getTouchAngle(touches) {
+      if (touches.length < 2) return null;
+      const t1 = touches[0], t2 = touches[1];
+      return Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX) * 180 / Math.PI;
+    }
+
+    function applyRotation(deg, smooth) {
+      currentRotation = ((deg % 360) + 360) % 360;
+      mapContainer.style.transition = smooth ? 'transform 0.15s ease-out' : 'none';
+      mapContainer.style.transform = 'rotate(' + currentRotation + 'deg)';
+      updateCompass();
+    }
+
+    function updateCompass() {
+      // Arrow points red toward actual north (counter-rotation)
+      compassArrow.style.transform = 'rotate(' + (-currentRotation) + 'deg)';
+      compassRing.title = Math.round(currentRotation) + '° поворот';
+    }
+
+    function resetRotation() {
+      mapContainer.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+      mapContainer.style.transform = 'rotate(0deg)';
+      currentRotation = 0;
+      updateCompass();
+    }
+
+    // Touch rotation — two fingers
+    mapContainer.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        touchStartAngle = getTouchAngle(e.touches);
+        initialRotation = currentRotation;
+        mapContainer.style.transition = 'none';
+      }
+    }, { passive: false });
+
+    mapContainer.addEventListener('touchmove', function(e) {
+      if (e.touches.length === 2 && touchStartAngle !== null) {
+        e.preventDefault();
+        let newAngle = getTouchAngle(e.touches);
+        if (newAngle !== null) {
+          let delta = newAngle - touchStartAngle;
+          applyRotation(initialRotation + delta, false);
         }
       }
-    );
+    }, { passive: false });
 
-    map.addChild(new YMapDefaultSchemeLayer());
-    map.addChild(new YMapDefaultFeaturesLayer());
-
-    // Линия маршрута
-    map.addChild(new YMapFeature({
-      geometry: {
-        type: 'LineString',
-        coordinates: routePoints
-      },
-      style: {
-        stroke: [{ color: '#52b788', width: 4 }]
+    mapContainer.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) {
+        touchStartAngle = null;
+        mapContainer.style.transition = 'transform 0.15s ease-out';
       }
-    }));
-
-    // Метки
-    pointsOfInterest.forEach(poi => {
-      const el = document.createElement('div');
-      el.style.cssText = `
-        background: ${poi.color};
-        color: #1a1a2e;
-        font-family: Inter, sans-serif;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 6px 10px;
-        border-radius: 20px;
-        white-space: nowrap;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        cursor: pointer;
-        border: 2px solid white;
-      `;
-      el.textContent = poi.name;
-      el.title = poi.desc;
-
-      map.addChild(new YMapMarker(
-        { coordinates: poi.coords },
-        el
-      ));
     });
-  });
-</script>
 
+    // Reset button
+    compassReset.addEventListener('click', function(e) {
+      e.stopPropagation();
+      resetRotation();
+    });
+
+    // Hide hint after 4 seconds
+    setTimeout(function() {
+      rotateHint.classList.add('hidden');
+    }, 4000);
+
+    // ===== Points Data =====
+    const allPoints = [
+      [54.635013, 19.883429],
+      [54.637620, 19.878199],
+      [54.646222, 19.866056],
+      [54.625471, 19.882037],
+      [54.612842, 19.878770],
+      [54.605065, 19.855597],
+      [54.612064, 19.860766],
+      [54.622897, 19.871746],
+      [54.630612, 19.876617],
+      [54.633204, 19.886628]
+    ];
+
+    const names = [
+      'Музей «Старый Люнет»',
+      'Форт Западный',
+      'Южный мол',
+      'Ангары «Нойтиф»',
+      'Взлётная полоса',
+      'Ржавый город',
+      'Дорога сквозь дюны',
+      'Наш велопрокат'
+    ];
+
+    const descriptions = [
+      'Атмосферный музей на Балтийской косе, созданный в бывшем фортификационном укреплении 19 века — люнете № 3, который был частью обороны крепости Пиллау. Здесь собраны подлинные артефакты от времён Пруссии до Второй мировой: оружие, документы, редкие карты, шифровальная машина «Энигма». Есть мини-кинозал и авторские экскурсии.',
+      'Построен в 1869–1871 годах для защиты порта Пиллау от атак с моря. Входил в систему береговых укреплений на Балтийской косе. Оснащён казематами, капонирами и мощными валами, в конце XIX века усилен бетоном — на тот момент это был один из самых современных фортов Восточной Пруссии. Военных действий не вел, после Второй мировой утратил значение. Сегодня форт частично разрушен и огорожен забором — доступ ограничен, но основные постройки хорошо видны снаружи. Редкий пример военной инженерии XIX века на фоне Балтийского моря.',
+      'Исторический волнорез на Балтийской косе, построенный в XVIII–XIX веках для защиты порта Пиллау от морской стихии. Сегодня — это более километра прогулки прямо в море, к зелёному маяку на горизонте. Здесь встречаются история, ветер и тишина. Отличное место для неспешных прогулок, фотосессий и ощущения полной свободы у края земли.',
+      'Построены в 1930-х как часть немецкой авиабазы Neutief. Использовались Люфтваффе, а после войны — советской морской авиацией. Здесь размещались гидросамолёты и истребители: от немецких Heinkel He 59 до советских Бе‑6, Бе‑12 и реактивных МиГ‑15 и МиГ‑17. Сохранились массивные бетонные ангары, старые ворота и остатки взлётных полос. Напротив ангаров — гидрогавань, где происходила посадка и спуск на воду летающих лодок. Бетонированная бухта соединялась с заливом и использовалась до конца 1990‑х. Сегодня здесь швартуются лодки и учебные яхты.',
+      'Построены в 1930-х годах как часть немецкой авиабазы Neutief. Имелись две пересекающиеся бетонные полосы — по данным ряда источников, одна была оснащена системой подогрева и подсветки, хотя это вызывает споры среди исследователей. После войны аэродром использовался советской морской авиацией, вплоть до 1990-х годов. Здесь базировались МиГ-15, МиГ-17, Бе-6, Бе-12. Сегодня сохранилась одна полоса — бетон потрескался, местами зарос травой, но до сих пор просматривается старая разметка. Это редкий пример уцелевшей военной инфраструктуры 20 века. Туристы приходят сюда погулять, поснимать и прочувствовать масштаб места, где когда-то взлетали боевые самолёты. Отличный маршрут для пешей прогулки или велопоездки.',
+      'Арт-пространство на базе заброшенной военной зоны. Здесь зародилась локальная панк-сцена: граффити, скульптуры из металлолома, перформансы. Ежегодно летом проходит фестиваль Ржавый дракон — костюмированное шоу в стиле постапокалипсиса с музыкой, огненным шоу, инсталляциями и атмосферой полной свободы. Уникальное место для любителей альтернативной культуры и ярких фотоснимков.',
+      'Песчаные холмы высотой до 40 метров, сформированные ветром и морем за тысячи лет. Закреплены лесонасаждениями в конце XIX века. Это уникальный природный ландшафт: редкие растения, миграции птиц, панорамные виды. Во время прогулки можно наткнуться на Танцующий лес — участок сосняка с деревьями причудливо изогнутой формы. Отличное место для отдыха, фото и наблюдения за природой.',
+      'Тут ничего особенного, просто самый лучший велопрокат на Балтийской косе 🚲'
+    ];
+
+    const imageUrls = [
+      'https://picsum.photos/seed/museum/320/200',
+      'https://picsum.photos/seed/fortress/320/200',
+      'https://picsum.photos/seed/pier/320/200',
+      'https://picsum.photos/seed/hangar/320/200',
+      'https://picsum.photos/seed/runway/320/200',
+      'https://picsum.photos/seed/art/320/200',
+      'https://picsum.photos/seed/dunes/320/200',
+      'https://picsum.photos/seed/bikerental/320/200'
+    ];
+
+    const markerIndices = [0, 1, 2, 3, 4, 6, 7, 9];
+
+    markerIndices.forEach(function(i, idx) {
+      const icon = L.divIcon({
+        className: 'numbered-icon',
+        html: (idx + 1).toString(),
+        iconSize: [36, 36],
+        iconAnchor: [18, 18]
+      });
+
+      const popupContent = [
+        '<div class="popup-card">',
+          '<div class="popup-image">',
+            '<img src="', imageUrls[idx], '" alt="', names[idx], '" loading="lazy" />',
+            '<span class="image-badge">Точка ', (idx + 1), '</span>',
+            '<div class="image-overlay"></div>',
+          '</div>',
+          '<div class="popup-header">',
+            '<div class="popup-title">', names[idx], '</div>',
+          '</div>',
+          '<div class="popup-body">',
+            '<div class="description-scroll">',
+              '<p>', descriptions[idx], '</p>',
+            '</div>',
+          '</div>',
+        '</div>'
+      ].join('');
+
+      L.marker(allPoints[i], { icon: icon }).addTo(map).bindPopup(popupContent, {
+        maxWidth: 300,
+        className: 'custom-popup'
+      });
+    });
+
+    // ===== Маршруты =====
+    const routingPoints1 = [0, 1, 2, 3, 4].map(function(i) { return L.latLng(allPoints[i]); });
+    L.Routing.control({
+      waypoints: routingPoints1,
+      routeWhileDragging: false,
+      createMarker: function() { return null; },
+      show: false,
+      lineOptions: {
+        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
+      }
+    }).addTo(map);
+
+    L.polyline([allPoints[4], allPoints[5]], {
+      color: '#f5a623',
+      weight: 4,
+      dashArray: '8,6',
+      opacity: 0.7
+    }).addTo(map);
+
+    L.Routing.control({
+      waypoints: [L.latLng(allPoints[5]), L.latLng(allPoints[6])],
+      routeWhileDragging: false,
+      createMarker: function() { return null; },
+      show: false,
+      fitSelectedRoutes: false,
+      lineOptions: {
+        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
+      }
+    }).addTo(map);
+
+    L.Routing.control({
+      waypoints: [
+        L.latLng(allPoints[6]),
+        L.latLng(allPoints[7]),
+        L.latLng(allPoints[8]),
+        L.latLng(allPoints[9])
+      ],
+      routeWhileDragging: false,
+      createMarker: function() { return null; },
+      show: false,
+      lineOptions: {
+        styles: [{ color: '#f5a623', weight: 4, opacity: 0.8 }]
+      }
+    }).addTo(map);
+
+    // ===== Геолокация =====
+    let userMarker;
+    let locateActive = false;
+
+    function toggleLocate() {
+      const btn = document.getElementById('locateBtn');
+      if (!locateActive) {
+        map.locate({ watch: true, setView: true, maxZoom: 15 });
+        locateActive = true;
+        btn.classList.add('active');
+      } else {
+        map.stopLocate();
+        locateActive = false;
+        btn.classList.remove('active');
+        if (userMarker) {
+          map.removeLayer(userMarker);
+          userMarker = null;
+        }
+      }
+    }
+
+    document.getElementById('locateBtn').addEventListener('click', toggleLocate);
+
+    map.on('locationfound', function(e) {
+      const pulseIcon = L.divIcon({
+        className: 'user-location-marker',
+        html: '<div class="pulse"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
+
+      if (!userMarker) {
+        userMarker = L.marker(e.latlng, { icon: pulseIcon }).addTo(map);
+      } else {
+        userMarker.setLatLng(e.latlng);
+      }
+    });
+
+    map.on('locationerror', function() {
+      alert('Не удалось определить ваше местоположение. Разрешите доступ к геолокации в браузере.');
+    });
+  </script>
 </body>
 </html>
