@@ -163,11 +163,22 @@
       display: flex; align-items: center; justify-content: center;
       background: linear-gradient(145deg, #a78bfa, #7c3aed);
       color: #fff; border-radius: 50%;
-      font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800;
-      border: 2.5px solid #0d1117;
+      font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 800;
+      border: 2px solid #0d1117;
       box-shadow: 0 0 0 2px #7c3aed, 0 3px 10px rgba(0,0,0,0.5);
     }
 
+    /* ── SHOP MARKERS ── */
+    .shop-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    /* ── USER LOCATION ── */
     /* ── USER LOCATION ── */
     .user-location-marker { position: relative; }
     .pulse {
@@ -343,8 +354,8 @@
     const icon = L.divIcon({
       className: 'poi-icon',
       html: '?',
-      iconSize: [34, 34],
-      iconAnchor: [17, 17]
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
     });
 
     const popupContent = [
@@ -369,6 +380,54 @@
       .addTo(map)
       .bindPopup(popupContent, { maxWidth: 300, className: 'custom-popup' });
   });
+
+  // ===== МАГАЗИНЫ =====
+  const shops = [
+    {
+      coords: [54.632912, 19.886794],
+      name: 'Магазин у пирса',
+      desc: ''
+    },
+    {
+      coords: [54.628611, 19.883821],
+      name: 'Магазин "Рыбка"',
+      desc: ''
+    },
+    {
+      coords: [54.631968, 19.883161],
+      name: 'Магазин',
+      desc: ''
+    },
+    {
+      coords: [54.629638, 19.880214],
+      name: 'Магазин',
+      desc: ''
+    }
+  ];
+
+  shops.forEach(function(shop) {
+    const icon = L.divIcon({
+      className: 'shop-icon',
+      html: '<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAYAAACpSkzOAAAACXBIWXMAAA7DAAAOwwHHb6hkAAACFElEQVR4nM2WPU9VQRCGn3uVShNDYQINiUJigXw0aKM/QBMTrCjtIJEegdBIycdvwD9Abew0wVBYek0AbYyJJIgEQgGXA+eSNe+SYdgD93Jv4SST3dl5Z96dc2b3HPjP5AZQTqyX5GuJlFqEqSvJK2BAdtkkHpCvKaL4SF4ANWBa9k0pWqsJY2PqlrjDW8A68AfoML6S5h3yrQG3XWyhlI22aW1GOx6T3ZbAjAkzk8CUryIM8gDIgI+JSv38E3CsGC4jCLvoAu4D3UAnsKydjgB3gR7gntMe+UaEXVZst3J1mcr/ybyA28AusAecqKK/sncLdE+YTFVF7LZyzlmip8BnOXI3NqInblwBnuBa8pmcWYIkN+rtPIHNNH9uOeKL6wMOE1V9AXZMog21fLR3hPFP4gDot80Ru6cd+GmqCuMP+RZN4sfAkLEXhPnuYn8Bd3yHxsmqQEcaK1p/a3Ybrp2Hhij4gnx1sauJY3D2nt458Detz5rE/QVEFdlVjUupMxWJJhzYE4WKBvU+I9GsqyjGhlyYe/Ec0XCdFfVeUlGMfelynytv0Owo6D4was5YTY2xYOwV3Xf7Zq3qPitnYjvvdxMHNte4meo4T/bB7OpIZ6uqts1kHxq7KjtiQ+z7IhJb4iNg6xpV5Rq3lOPCY0tVFW7dcWAKeANM1qFTwGvFFlaTImtGSo0A479Bo9qSP6JryynKt/r5lHUJtQAAAABJRU5ErkJggg==" style="width:100%;height:100%;object-fit:contain;" />',
+      iconSize: [26, 26],
+      iconAnchor: [13, 13]
+    });
+
+    const popupContent = [
+      '<div class="popup-card">',
+        '<div class="popup-header" style="padding:14px 14px 6px">',
+          '<div class="popup-title">', shop.name, '</div>',
+        '</div>',
+        shop.desc ? '<div class="popup-body"><div class="description-scroll"><p>' + shop.desc + '</p></div></div>' : '',
+      '</div>'
+    ].join('');
+
+    L.marker(shop.coords, { icon: icon })
+      .addTo(map)
+      .bindPopup(popupContent, { maxWidth: 260, className: 'custom-popup' });
+  });
+
+  // ===== Маршруты по дорогам (OSRM) =====
   const routeStyle = [{ color: '#39d353', weight: 4, opacity: 0.85 }];
 
   // Участок 1: точки 0→1→2→3→4
